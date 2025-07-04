@@ -1,74 +1,71 @@
 import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import cgi
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-PORT = 8080
 UPLOAD_DIR = "uploads"
+PORT = 8080
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-class FileUploadHandler(BaseHTTPRequestHandler):
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+
     def do_GET(self):
         if self.path == "/":
             self.send_response(200)
-            self.send_header('Content-type', 'text/html')
+            self.send_header("Content-type", "text/html")
             self.end_headers()
-            self.wfile.write(b"""
-                <html>
-                <body>
-                    <h2>Upload File</h2>
-                    <form enctype="multipart/form-data" method="post">
-                        <input name="file" type="file"/>
-                        <input type="submit" value="Upload"/>
-                    </form>
-                    <h3>Uploaded Files:</h3>
-                    <ul>
-            """ + 
-            "".join([
-                f"<li><a href='/uploads/{f}'>{f}</a></li>" 
-                for f in os.listdir(UPLOAD_DIR)
-            ]).encode() + 
-            b"""
-                    </ul>
-                </body>
-                </html>
-            """)
+            # صفحه آپلود و لیست فایل‌ها
+            files = os.listdir(UPLOAD_DIR)
+            files_list = "".join(f'<li><a href="/uploads/{f}">{f}</a></li>' for f in files)
+            html = f"""
+            <html><body>
+            <h2>Upload File</h2>
+            <form enctype="multipart/form-data" method="post">
+              <input name="file" type="file"/>
+              <input type="submit" value="Upload"/>
+            </form>
+            <h3>Uploaded Files:</h3>
+            <ul>{files_list}</ul>
+            </body></html>
+            """
+            self.wfile.write(html.encode())
         elif self.path.startswith("/uploads/"):
-            file_name = self.path[len("/uploads/"):]
-            file_path = os.path.join(UPLOAD_DIR, file_name)
-            if os.path.exists(file_path):
+            filename = self.path[len("/uploads/"):]
+            filepath = os.path.join(UPLOAD_DIR, filename)
+            if os.path.exists(filepath):
                 self.send_response(200)
-                self.send_header('Content-Disposition', f'attachment; filename="{file_name}"')
+                self.send_header("Content-Disposition", f"attachment; filename={filename}")
                 self.end_headers()
-                with open(file_path, 'rb') as f:
+                with open(filepath, "rb") as f:
                     self.wfile.write(f.read())
             else:
-                self.send_error(404, "File not found")
+                self.send_error(404, "File Not Found")
 
     def do_POST(self):
-        content_type, pdict = cgi.parse_header(self.headers.get('content-type'))
-        if content_type == 'multipart/form-data':
-            pdict['boundary'] = bytes(pdict['boundary'], "utf-8")
-            pdict['CONTENT-LENGTH'] = int(self.headers['content-length'])
-            form = cgi.FieldStorage(
-                fp=self.rfile,
-                headers=self.headers,
-                environ={'REQUEST_METHOD': 'POST'},
-                keep_blank_values=True
-            )
-            if 'file' in form:
-                file_item = form['file']
-                filename = os.path.basename(file_item.filename)
-                with open(os.path.join(UPLOAD_DIR, filename), 'wb') as f:
-                    f.write(file_item.file.read())
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(f"<h3>File '{filename}' uploaded successfully!</h3><a href='/'>Back</a>".encode())
-            else:
-                self.send_error(400, "No file uploaded")
-        else:
-            self.send_error(400, "Content-Type not supported")
+        content_length = int(self.headers['Content-Length'])
+        boundary = self.headers['Content-Type'].split("boundary=")[1].encode()
+        body = self.rfile.read(content_length)
+
+        parts = body.split(b"--" + boundary)
+        for part in parts:
+            if b'Content-Disposition' in part and b'name="file"' in part:
+                # جدا کردن header و محتوا
+                head, file_data = part.split(b"\r\n\r\n", 1)
+                file_data = file_data.rstrip(b"\r\n--")
+
+                # پیدا کردن نام فایل
+                for line in head.split(b"\r\n"):
+                    if b'filename="' in line:
+                        filename = line.split(b'filename="')[1].split(b'"')[0].decode()
+                        filepath = os.path.join(UPLOAD_DIR, filename)
+                        with open(filepath, "wb") as f:
+                            f.write(file_data)
+                        break
+
+        self.send_response(303)
+        self.send_header('Location', '/')
+        self.end_headers()
+
 
 if __name__ == "__main__":
-    server = HTTPServer(('', PORT), FileUploadHandler)
-    print(f"🚀 Server running on http://localhost:{PORT}")
+    server = HTTPServer(("", PORT), SimpleHTTPRequestHandler)
+    print(f"Server running on http://localhost:{PORT}")
     server.serve_forever()
