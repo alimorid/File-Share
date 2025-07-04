@@ -6,8 +6,8 @@ This Repo Use For SHaring file Local
 -Your laptop had Python 3 installed (most Linux, Mac, and Windows have it now)
 ------------------------------
 ✳️ Step 1: Create a folder for files
-mkdir file-share
-cd file-share
+  >mkdir file-share
+  >cd file-share
 ------------------------------
 ✳️ Step 2: Create HTML for file upload
 >index.html
