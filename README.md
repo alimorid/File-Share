@@ -2,8 +2,8 @@
 This Repo Use For SHaring file Local
 
 🧱 Prerequisite:
--Both devices must be on the same WiFi network
--Your laptop had Python 3 installed (most Linux, Mac, and Windows have it now)
+  -Both devices must be on the same WiFi network
+  -Your laptop had Python 3 installed (most Linux, Mac, and Windows have it now)
 ------------------------------
 ✳️ Step 1: Create a folder for files
   >mkdir file-share
