@@ -19,8 +19,11 @@ This Repo Use For SHaring file Local
 ------------------------------
 ✳️ Step 4: Implementation
 In the same file-share folder, run this command:
+
 >python3 server.py
+
 If there was no problem, you will see something like this:
+
 >Server running at http://localhost:8000
 ------------------------------
 ✳️ Step 5: Connect from another device
