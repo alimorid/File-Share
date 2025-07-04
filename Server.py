@@ -1,45 +1,74 @@
-import http.server
-import socketserver
 import os
-from urllib.parse import unquote
-import json
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import cgi
 
+PORT = 8080
 UPLOAD_DIR = "uploads"
-PORT = 8000
-
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-class Handler(http.server.SimpleHTTPRequestHandler):
+class FileUploadHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/files":
-            files = os.listdir(UPLOAD_DIR)
+        if self.path == "/":
             self.send_response(200)
-            self.send_header("Content-type", "application/json")
+            self.send_header('Content-type', 'text/html')
             self.end_headers()
-            self.wfile.write(json.dumps(files).encode())
-        else:
-            super().do_GET()
+            self.wfile.write(b"""
+                <html>
+                <body>
+                    <h2>Upload File</h2>
+                    <form enctype="multipart/form-data" method="post">
+                        <input name="file" type="file"/>
+                        <input type="submit" value="Upload"/>
+                    </form>
+                    <h3>Uploaded Files:</h3>
+                    <ul>
+            """ + 
+            "".join([
+                f"<li><a href='/uploads/{f}'>{f}</a></li>" 
+                for f in os.listdir(UPLOAD_DIR)
+            ]).encode() + 
+            b"""
+                    </ul>
+                </body>
+                </html>
+            """)
+        elif self.path.startswith("/uploads/"):
+            file_name = self.path[len("/uploads/"):]
+            file_path = os.path.join(UPLOAD_DIR, file_name)
+            if os.path.exists(file_path):
+                self.send_response(200)
+                self.send_header('Content-Disposition', f'attachment; filename="{file_name}"')
+                self.end_headers()
+                with open(file_path, 'rb') as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_error(404, "File not found")
 
     def do_POST(self):
-        if self.path == "/upload":
-            content_length = int(self.headers['Content-Length'])
-            boundary = self.headers['Content-Type'].split("=")[1].encode()
-            body = self.rfile.read(content_length)
-            file_data = body.split(boundary)[2]
-            headers, file_content = file_data.split(b"\r\n\r\n", 1)
-            file_content = file_content.rsplit(b"\r\n", 1)[0]
-            filename_line = headers.decode(errors="ignore").split("\r\n")[1]
-            filename = filename_line.split("filename=")[1].strip('"')
-            with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
-                f.write(file_content)
-            self.send_response(303)
-            self.send_header('Location', '/')
-            self.end_headers()
+        content_type, pdict = cgi.parse_header(self.headers.get('content-type'))
+        if content_type == 'multipart/form-data':
+            pdict['boundary'] = bytes(pdict['boundary'], "utf-8")
+            pdict['CONTENT-LENGTH'] = int(self.headers['content-length'])
+            form = cgi.FieldStorage(
+                fp=self.rfile,
+                headers=self.headers,
+                environ={'REQUEST_METHOD': 'POST'},
+                keep_blank_values=True
+            )
+            if 'file' in form:
+                file_item = form['file']
+                filename = os.path.basename(file_item.filename)
+                with open(os.path.join(UPLOAD_DIR, filename), 'wb') as f:
+                    f.write(file_item.file.read())
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(f"<h3>File '{filename}' uploaded successfully!</h3><a href='/'>Back</a>".encode())
+            else:
+                self.send_error(400, "No file uploaded")
+        else:
+            self.send_error(400, "Content-Type not supported")
 
-Handler.extensions_map.update({
-    '.html': 'text/html',
-})
-
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
-    print(f"Server running at http://localhost:{PORT}")
-    httpd.serve_forever()
+if __name__ == "__main__":
+    server = HTTPServer(('', PORT), FileUploadHandler)
+    print(f"🚀 Server running on http://localhost:{PORT}")
+    server.serve_forever()
