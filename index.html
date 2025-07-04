@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LAN File Share</title>
+</head>
+<body>
+  <h2>Upload File</h2>
+  <form action="/upload" method="post" enctype="multipart/form-data">
+    <input type="file" name="file"><br><br>
+    <input type="submit" value="Upload">
+  </form>
+  <hr>
+  <h2>Download Files</h2>
+  <ul>
+    <script>
+      fetch("/files").then(res => res.json()).then(files => {
+        for (const file of files) {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = `/uploads/${file}`;
+          a.innerText = file;
+          li.appendChild(a);
+          document.querySelector("ul").appendChild(li);
+        }
+      });
+    </script>
+  </ul>
+</body>
+</html>
