@@ -1,29 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>LAN File Share</title>
+  <title>🕶️ LAN Hacker File Share</title>
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: 'Courier New', monospace;
+      padding: 40px;
+    }
+
+    h2 {
+      color: #58a6ff;
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 5px;
+    }
+
+    form {
+      margin-bottom: 30px;
+    }
+
+    input[type="file"] {
+      background: #161b22;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      padding: 10px;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    input[type="submit"] {
+      background: #238636;
+      color: #ffffff;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    input[type="submit"]:hover {
+      background: #2ea043;
+    }
+
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+
+    li {
+      margin-bottom: 10px;
+    }
+
+    a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #30363d;
+      margin: 30px 0;
+    }
+  </style>
 </head>
 <body>
-  <h2>Upload File</h2>
+  <h2>💾 Upload Files to Your Dark Node</h2>
   <form action="/upload" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" multiple><br><br>
+    <input type="file" name="file" multiple><br>
     <input type="submit" value="Upload">
   </form>
+
   <hr>
-  <h2>Download Files</h2>
+
+  <h2>📂 Download Files from the Vault</h2>
   <ul>
     <script>
-      fetch("/files").then(res => res.json()).then(files => {
-        for (const file of files) {
-          const li = document.createElement("li");
-          const a = document.createElement("a");
-          a.href = `/uploads/${file}`;
-          a.innerText = file;
-          li.appendChild(a);
-          document.querySelector("ul").appendChild(li);
-        }
-      });
+      fetch("/files")
+        .then(res => res.json())
+        .then(files => {
+          for (const file of files) {
+            const li = document.createElement("li");
+            const a = document.createElement("a");
+            a.href = `/uploads/${file}`;
+            a.innerText = file;
+            li.appendChild(a);
+            document.querySelector("ul").appendChild(li);
+          }
+        });
     </script>
   </ul>
 </body>
