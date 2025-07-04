@@ -12,14 +12,14 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
-            # صفحه آپلود و لیست فایل‌ها
+            # فرم آپلود چندفایلی + لیست فایل‌ها
             files = os.listdir(UPLOAD_DIR)
             files_list = "".join(f'<li><a href="/uploads/{f}">{f}</a></li>' for f in files)
             html = f"""
             <html><body>
-            <h2>Upload File</h2>
+            <h2>Upload Files</h2>
             <form enctype="multipart/form-data" method="post">
-              <input name="file" type="file"/>
+              <input name="file" type="file" multiple/>
               <input type="submit" value="Upload"/>
             </form>
             <h3>Uploaded Files:</h3>
@@ -43,22 +43,25 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers['Content-Length'])
         boundary = self.headers['Content-Type'].split("boundary=")[1].encode()
         body = self.rfile.read(content_length)
-
         parts = body.split(b"--" + boundary)
+
         for part in parts:
             if b'Content-Disposition' in part and b'name="file"' in part:
-                # جدا کردن header و محتوا
-                head, file_data = part.split(b"\r\n\r\n", 1)
-                file_data = file_data.rstrip(b"\r\n--")
+                try:
+                    head, file_data = part.split(b"\r\n\r\n", 1)
+                    file_data = file_data.rstrip(b"\r\n--")
 
-                # پیدا کردن نام فایل
-                for line in head.split(b"\r\n"):
-                    if b'filename="' in line:
-                        filename = line.split(b'filename="')[1].split(b'"')[0].decode()
-                        filepath = os.path.join(UPLOAD_DIR, filename)
-                        with open(filepath, "wb") as f:
-                            f.write(file_data)
-                        break
+                    # پیدا کردن نام فایل
+                    for line in head.split(b"\r\n"):
+                        if b'filename="' in line:
+                            filename = line.split(b'filename="')[1].split(b'"')[0].decode()
+                            if filename:
+                                filepath = os.path.join(UPLOAD_DIR, filename)
+                                with open(filepath, "wb") as f:
+                                    f.write(file_data)
+                            break
+                except Exception as e:
+                    print(f"[!] Error handling file part: {e}")
 
         self.send_response(303)
         self.send_header('Location', '/')
@@ -67,5 +70,5 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     server = HTTPServer(("", PORT), SimpleHTTPRequestHandler)
-    print(f"Server running on http://localhost:{PORT}")
+    print(f"🚀 Server running on http://localhost:{PORT}")
     server.serve_forever()
